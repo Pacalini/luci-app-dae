@@ -1,0 +1,118 @@
+#!/bin/sh
+
+readonly NAME="dae"
+readonly PROG="/usr/bin/dae"
+readonly LOG="/var/log/dae.log"
+
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+
+is_enabled() { "/etc/init.d/${1}" enabled; }
+is_running() { [ "$(ubus call service list "{ 'name': '$1' }" | jsonfilter -q -e "@['$1'].instances[*].running" | uniq)" = 'true' ]; }
+get_version() { $PROG --version | awk 'NR==1' | awk '{print $3}'; }
+print_json_bool() { json_init; json_add_boolean "$1" "$2"; json_dump; json_cleanup; }
+
+get_init_list() {
+	local name="$1"
+	json_init
+	json_add_object "$name"
+	if is_enabled "$name"; then
+		json_add_boolean 'enabled' '1'
+	else
+		json_add_boolean 'enabled' '0'
+	fi
+	if is_running "$name"; then
+		json_add_boolean 'running' '1'
+	else
+		json_add_boolean 'running' '0'
+	fi
+	json_close_object
+	json_dump
+	json_cleanup
+}
+
+get_init_status() {
+	local name
+	local version
+	name="$(basename "$1")"
+	name="${name:-$NAME}" 
+	[ -z "$version" ] && version="$(get_version "$name")"
+	json_init
+	json_add_object  "$name"
+	if is_enabled "$name"; then
+		json_add_boolean 'enabled' '1'
+	else
+		json_add_boolean 'enabled' '0'
+	fi
+	if is_running "$name"; then
+		json_add_boolean 'running' '1'
+	else
+		json_add_boolean 'running' '0'
+	fi
+	json_add_string 'version' "$version"
+	json_close_array
+	json_close_object
+	json_dump
+	json_cleanup
+}
+
+set_init_action() {
+	local name="$1" action="$2" cmd
+	case $action in
+		enable|disable|start|stop|restart|reload_config)
+			cmd="/etc/init.d/${name} ${action}"
+		;;
+	esac
+	if [ -n "$cmd" ] && eval "$cmd" >/dev/null 2>&1; then
+		print_json_bool "result" '1'
+	else
+		print_json_bool "result" '0'
+	fi
+}
+
+case "$1" in
+	list)
+		json_init
+		json_add_object "getInitList"
+			json_add_string 'name' "name"
+		json_close_object
+		json_add_object "getInitStatus"
+			json_add_string 'name' "name"
+		json_close_object
+		json_add_object "setInitAction"
+			json_add_string 'name' "name"
+			json_add_string 'action' "action"
+		json_close_object
+		json_dump
+		json_cleanup
+		;;
+	call)
+		case "$2" in
+			getInitList)
+				read -r input
+				json_load "$input"
+				json_get_var name 'name'
+				json_cleanup
+				get_init_list "$name"
+				;;
+			getInitStatus)
+				read -r input
+				json_load "$input"
+				json_get_var name 'name'
+				json_cleanup
+				get_init_status "$name"
+				;;
+			setInitAction)
+				read -r input
+				json_load "$input"
+				json_get_var name "name"
+				json_get_var action "action"
+				json_cleanup
+				set_init_action "$name" "$action"
+				;;
+			clearLog)
+				clear_log
+				;;
+		esac
+	;;
+esac

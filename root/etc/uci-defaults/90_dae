@@ -1,0 +1,7 @@
+#!/bin/sh
+
+touch /etc/config/dae
+uci set dae.settings=settings
+uci commit
+
+return 0
