@@ -15,7 +15,7 @@ Useful to users who care little about subscribtion related stuff and treat dae a
 
 Does NOT complile dae itself. Run the [installer script](https://github.com/Pacalini/luci-app-dae/blob/main/root/usr/share/dae/installer.sh) in terminal, or download manually.
 
-Developed & tested on mainline Openwrt 24.10.
+Developed & tested on mainline Openwrt 24.10 & 25.12.
 
 ![screenshot](https://github.com/user-attachments/assets/d7d22243-9d12-46c1-a79d-5b6aebd9e501)
 
